@@ -1,0 +1,262 @@
+<script>
+	// @ts-nocheck
+	import { onMount } from 'svelte';
+	import { scale } from 'svelte/transition';
+	import { anyId } from 'promptparse/generate';
+	import { renderSVG } from 'uqr';
+	import { Moon, Sun, Wallet, Github } from 'lucide-svelte';
+
+	let amount = $state(200);
+	let person = $state(2);
+	let target = $state('');
+
+	let amountPerPerson = $derived(person > 0 ? amount / person : 0);
+	let cleanTarget = $derived(target.replace(/\D/g, ''));
+	let isValidPhone = $derived(cleanTarget.length === 10);
+
+	let qrImage = $derived(
+		cleanTarget
+			? btoa(renderSVG(anyId({ type: 'MSISDN', target: cleanTarget, amount: amountPerPerson })))
+			: ''
+	);
+
+	let theme = $state('default');
+
+	onMount(() => {
+		const saved = localStorage.getItem('theme');
+
+		if (saved === 'dark' || saved === 'light') {
+			theme = saved;
+		} else {
+			theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+		}
+
+		applyTheme(theme);
+
+		const savedAmount = localStorage.getItem('amount');
+		const savedPerson = localStorage.getItem('person');
+		const savedTarget = localStorage.getItem('target');
+
+		if (savedAmount) amount = Number(savedAmount);
+		if (savedPerson) person = Number(savedPerson);
+		if (savedTarget) target = savedTarget;
+	});
+
+	$effect(() => {
+		localStorage.setItem('amount', String(amount));
+		localStorage.setItem('person', String(person));
+		localStorage.setItem('target', target);
+	});
+
+	function onlyNumber(e) {
+		e.target.value = e.target.value.replace(/\D/g, '');
+	}
+
+	function applyTheme(value) {
+		document.documentElement.classList.toggle('dark', value === 'dark');
+	}
+
+	function toggleTheme() {
+		theme = theme === 'dark' ? 'light' : 'dark';
+		localStorage.setItem('theme', theme);
+		applyTheme(theme);
+	}
+
+	function downloadSVG() {
+		const svg = renderSVG(
+			anyId({
+				type: 'MSISDN',
+				target: cleanTarget,
+				amount: amountPerPerson
+			})
+		);
+
+		const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
+
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `promptpay-${cleanTarget}.svg`;
+		a.click();
+
+		URL.revokeObjectURL(url);
+	}
+
+	function downloadPNG() {
+		const svg = renderSVG(
+			anyId({
+				type: 'MSISDN',
+				target: cleanTarget,
+				amount: amountPerPerson
+			})
+		);
+
+		const img = new Image();
+		const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8;' });
+		const url = URL.createObjectURL(svgBlob);
+
+		img.onload = () => {
+			const canvas = document.createElement('canvas');
+			canvas.width = 512;
+			canvas.height = 512;
+
+			const ctx = canvas.getContext('2d');
+			ctx.fillStyle = '#ffffff';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+			canvas.toBlob((blob) => {
+				const pngUrl = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = pngUrl;
+				a.download = `promptpay-${cleanTarget}.png`;
+				a.click();
+				URL.revokeObjectURL(pngUrl);
+			});
+
+			URL.revokeObjectURL(url);
+		};
+
+		img.src = url;
+	}
+</script>
+
+<div
+	class="flex min-h-screen items-center justify-center bg-zinc-50 p-4 text-zinc-900 transition-colors duration-300 dark:bg-zinc-950 dark:text-zinc-100"
+>
+	<div
+		class="w-full max-w-md rounded-xl border border-zinc-300 bg-white shadow-sm transition-colors duration-300 dark:border-zinc-800 dark:bg-zinc-900"
+	>
+		<div class="space-y-6 p-6">
+			<!-- Header -->
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<span class="text-lg"><Wallet /></span>
+					<h1 class="text-lg font-semibold tracking-tight uppercase">Half & Half</h1>
+					<span
+						class="rounded-full border border-zinc-300 px-2 py-0.5 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+						>คนละครึ่ง</span
+					>
+				</div>
+
+				<button
+					onclick={toggleTheme}
+					class="rounded-md border border-zinc-300 p-2 text-xs text-zinc-600 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+				>
+					{#if theme === 'dark'}
+						<Moon class="h-4 w-4" />
+					{:else}
+						<Sun class="h-4 w-4" />
+					{/if}
+				</button>
+			</div>
+
+			<!-- Amount -->
+			<div class="space-y-2">
+				<label for="amount" class="text-sm text-zinc-600 dark:text-zinc-300"
+					>Amount<span class="ml-1 text-xs text-zinc-600 dark:text-zinc-400">(จำนวนเงิน)</span
+					></label
+				>
+				<input
+					id="amount"
+					type="text"
+					inputmode="numeric"
+					pattern="[0-9]*"
+					bind:value={amount}
+					oninput={(e) => {
+						onlyNumber(e);
+						amount = Number(e.target.value || 0);
+					}}
+					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm
+	       focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
+				/>
+			</div>
+
+			<!-- People -->
+			<div class="space-y-2">
+				<label for="people" class="text-sm text-zinc-600 dark:text-zinc-300">Number of People</label
+				><span class="ml-1 text-xs text-zinc-600 dark:text-zinc-400">(จำนวนคน)</span>
+				<input
+					id="people"
+					type="text"
+					inputmode="numeric"
+					pattern="[0-9]*"
+					bind:value={person}
+					oninput={(e) => {
+						onlyNumber(e);
+						person = Number(e.target.value || 0);
+					}}
+					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm
+	       focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
+				/>
+			</div>
+
+			<!-- Phone -->
+			<div class="space-y-2">
+				<label for="phone" class="text-sm text-zinc-600 dark:text-zinc-300">PromptPay Phone</label>
+				<div class="flex justify-between text-xs">
+					<span class="text-zinc-600 dark:text-zinc-400"> (ใส่เบอร์โทรศัพท์ 10 หลัก) </span>
+
+					<span class={cleanTarget.length === 10 ? 'text-green-500' : 'text-zinc-600'}>
+						{cleanTarget.length}/10
+					</span>
+				</div>
+				<input
+					id="phone"
+					type="text"
+					inputmode="numeric"
+					pattern="[0-9]*"
+					maxlength="10"
+					bind:value={target}
+					oninput={(e) => {
+						onlyNumber(e);
+						target = e.target.value.slice(0, 10);
+					}}
+					placeholder="08xxxxxxxx"
+					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm
+	       focus:outline-none dark:border-zinc-700 dark:bg-zinc-800"
+				/>
+			</div>
+
+			{#if isValidPhone}
+				<div class="space-y-4 text-center" in:scale={{ start: 0.95, duration: 200 }}>
+					<p class="text-xs tracking-wide text-zinc-500 uppercase dark:text-zinc-300">
+						Amount per person
+						<span class="text-zinc-600 dark:text-zinc-400"> (จำนวนเงินต่อคน) </span>
+					</p>
+					<p class="text-2xl font-bold">฿{amountPerPerson.toFixed(2)}</p>
+
+					<div class="flex justify-center">
+						<div
+							class="rounded-lg border border-zinc-300 bg-white p-3 shadow-sm dark:border-zinc-700"
+						>
+							<img
+								src={'data:image/svg+xml;base64,' + qrImage}
+								alt="PromptPay QR"
+								class="h-40 w-40"
+							/>
+						</div>
+					</div>
+				</div>
+				<div class="flex justify-center gap-2">
+					<button
+						onclick={downloadPNG}
+						class="rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+					>
+						Download PNG
+					</button>
+
+					<button
+						onclick={downloadSVG}
+						class="rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+					>
+						Download SVG
+					</button>
+				</div>
+			{/if}
+
+			<!-- Footer -->
+			<p class="text-center text-xs text-zinc-500">netpramad © 2025 All rights reserved</p>
+		</div>
+	</div>
+</div>
