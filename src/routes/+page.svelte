@@ -128,7 +128,7 @@
 					await navigator.share({
 						files: [file],
 						title: 'PromptPay QR',
-						text: `QR Code for phone ${cleanTarget}, amount ฿${amountPerPerson.toFixed(2)}`
+						text: `TH: รหัส QR PromptPay สำหรับหมายเลข ${cleanTarget}\nจำนวนเงิน ฿${amountPerPerson.toFixed(2)}\n\nEN: PromptPay QR for phone ${cleanTarget}\nAmount ฿${amountPerPerson.toFixed(2)}`
 					});
 				} else {
 					// fallback desktop: ดาวน์โหลด
@@ -231,7 +231,7 @@
 			<!-- Amount -->
 			<div class="space-y-2">
 				<label for="amount" class="text-sm text-zinc-600 dark:text-zinc-300">
-					Amount <span class="ml-1 text-xs text-zinc-600 dark:text-zinc-400">(จำนวนเงิน)</span>
+					Amount <span class="text-xs text-zinc-600 dark:text-zinc-400">(จำนวนเงิน)</span>
 				</label>
 				<input
 					id="amount"
@@ -253,7 +253,7 @@
 				<label for="people" class="text-sm text-zinc-600 dark:text-zinc-300">
 					Number of People
 				</label>
-				<span class="ml-1 text-xs text-zinc-600 dark:text-zinc-400">(จำนวนคน)</span>
+				<span class="text-xs text-zinc-600 dark:text-zinc-400">(จำนวนคน)</span>
 				<input
 					id="people"
 					type="text"
