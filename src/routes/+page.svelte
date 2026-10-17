@@ -1,26 +1,92 @@
-<script>
-	// @ts-nocheck
+<script lang="ts">
 	import { onMount } from 'svelte';
 	import { scale } from 'svelte/transition';
 	import { anyId } from 'promptparse/generate';
 	import { renderSVG } from 'uqr';
 	import { Moon, Sun, Wallet } from 'lucide-svelte';
 
-	let amount = $state(200);
-	let person = $state(2);
+	const SITE_URL = 'https://workshop-svelte-half-and-half.vercel.app';
+
+	// Use strings for inputs to avoid number/text binding coercion issues.
+	let amountStr = $state('200');
+	let personStr = $state('2');
 	let target = $state('');
+	let theme: 'light' | 'dark' = $state('light');
+	let hydrated = $state(false);
 
-	let amountPerPerson = $derived(person > 0 ? amount / person : 0);
-	let cleanTarget = $derived(target.replace(/\D/g, ''));
-	let isValidPhone = $derived(cleanTarget.length === 10);
+	let amount = $derived(Number(amountStr) || 0);
+	let person = $derived(Number(personStr) || 0);
+	let amountValid = $derived(Number.isFinite(amount) && amount > 0);
+	let personValid = $derived(Number.isInteger(person) && person >= 1);
+	let cleanTarget = $derived(target.replace(/\D/g, '').slice(0, 10));
+	let isValidPhone = $derived(/^0\d{9}$/.test(cleanTarget));
 
-	let qrImage = $derived(
-		cleanTarget
-			? btoa(renderSVG(anyId({ type: 'MSISDN', target: cleanTarget, amount: amountPerPerson })))
-			: ''
+	let amountPerPerson = $derived(
+		amountValid && personValid ? Math.round((amount / person) * 100) / 100 : 0
 	);
+	let canShowQr = $derived(isValidPhone && amountValid && personValid);
 
-	let theme = $state('default');
+	// Only build the payload when inputs are valid; anyId can throw on bad input.
+	let qrSvg = $derived.by(() => {
+		if (!canShowQr) return '';
+		try {
+			return renderSVG(anyId({ type: 'MSISDN', target: cleanTarget, amount: amountPerPerson }));
+		} catch {
+			return '';
+		}
+	});
+
+	function svgToBase64(svg: string): string {
+		const bytes = new TextEncoder().encode(svg);
+		let binary = '';
+		for (const b of bytes) binary += String.fromCharCode(b);
+		return btoa(binary);
+	}
+
+	let qrImage = $derived(qrSvg ? svgToBase64(qrSvg) : '');
+
+	function buildQrSvg(): string {
+		return renderSVG(anyId({ type: 'MSISDN', target: cleanTarget, amount: amountPerPerson }));
+	}
+
+	function svgToPngBlob(svg: string): Promise<Blob | null> {
+		return new Promise((resolve) => {
+			const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8;' });
+			const url = URL.createObjectURL(svgBlob);
+			const img = new Image();
+			img.onload = () => {
+				URL.revokeObjectURL(url);
+				const canvas = document.createElement('canvas');
+				canvas.width = 512;
+				canvas.height = 512;
+				const ctx = canvas.getContext('2d');
+				if (!ctx) {
+					resolve(null);
+					return;
+				}
+				ctx.fillStyle = '#ffffff';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+				canvas.toBlob((blob) => resolve(blob), 'image/png');
+			};
+			img.onerror = () => {
+				URL.revokeObjectURL(url);
+				resolve(null);
+			};
+			img.src = url;
+		});
+	}
+
+	function triggerDownload(url: string, filename: string) {
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+		// Revoke async so the download has time to start.
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
+	}
 
 	onMount(() => {
 		const saved = localStorage.getItem('theme');
@@ -37,22 +103,21 @@
 		const savedPerson = localStorage.getItem('person');
 		const savedTarget = localStorage.getItem('target');
 
-		if (savedAmount) amount = Number(savedAmount);
-		if (savedPerson) person = Number(savedPerson);
-		if (savedTarget) target = savedTarget;
+		if (savedAmount !== null && /^\d+$/.test(savedAmount)) amountStr = savedAmount;
+		if (savedPerson !== null && /^\d+$/.test(savedPerson)) personStr = savedPerson;
+		if (savedTarget !== null) target = savedTarget.replace(/\D/g, '').slice(0, 10);
+
+		hydrated = true;
 	});
 
 	$effect(() => {
-		localStorage.setItem('amount', String(amount));
-		localStorage.setItem('person', String(person));
+		if (!hydrated) return;
+		localStorage.setItem('amount', amountStr);
+		localStorage.setItem('person', personStr);
 		localStorage.setItem('target', target);
 	});
 
-	function onlyNumber(e) {
-		e.target.value = e.target.value.replace(/\D/g, '');
-	}
-
-	function applyTheme(value) {
+	function applyTheme(value: 'light' | 'dark') {
 		document.documentElement.classList.toggle('dark', value === 'dark');
 	}
 
@@ -63,88 +128,53 @@
 	}
 
 	function downloadSVG() {
-		const svg = renderSVG(anyId({ type: 'MSISDN', target: cleanTarget, amount: amountPerPerson }));
-		const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8;' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `promptpay-${cleanTarget}.svg`;
-		a.click();
-		URL.revokeObjectURL(url);
+		if (!canShowQr) return;
+		try {
+			const svg = buildQrSvg();
+			const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8;' });
+			triggerDownload(URL.createObjectURL(blob), `promptpay-${cleanTarget}.svg`);
+		} catch {
+			// Invalid payload — nothing to download.
+		}
 	}
 
-	function downloadPNG() {
-		const svg = renderSVG(anyId({ type: 'MSISDN', target: cleanTarget, amount: amountPerPerson }));
-		const img = new Image();
-		const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8;' });
-		const url = URL.createObjectURL(svgBlob);
-
-		img.onload = () => {
-			const canvas = document.createElement('canvas');
-			canvas.width = 512;
-			canvas.height = 512;
-
-			const ctx = canvas.getContext('2d');
-			ctx.fillStyle = '#ffffff';
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-			canvas.toBlob((blob) => {
-				const pngUrl = URL.createObjectURL(blob);
-				const a = document.createElement('a');
-				a.href = pngUrl;
-				a.download = `promptpay-${cleanTarget}.png`;
-				a.click();
-				URL.revokeObjectURL(pngUrl);
-			});
-
-			URL.revokeObjectURL(url);
-		};
-
-		img.src = url;
+	async function downloadPNG() {
+		if (!canShowQr) return;
+		try {
+			const blob = await svgToPngBlob(buildQrSvg());
+			if (!blob) return;
+			triggerDownload(URL.createObjectURL(blob), `promptpay-${cleanTarget}.png`);
+		} catch {
+			// Invalid payload or canvas failure — nothing to download.
+		}
 	}
 
 	async function shareQR() {
-		if (!isValidPhone) return;
+		if (!canShowQr) return;
+		try {
+			const blob = await svgToPngBlob(buildQrSvg());
+			if (!blob) return;
+			const file = new File([blob], `promptpay-${cleanTarget}.png`, { type: 'image/png' });
 
-		const svg = renderSVG(anyId({ type: 'MSISDN', target: cleanTarget, amount: amountPerPerson }));
-		const img = new Image();
-		const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8;' });
-		const url = URL.createObjectURL(svgBlob);
-
-		img.onload = async () => {
-			const canvas = document.createElement('canvas');
-			canvas.width = 512;
-			canvas.height = 512;
-			const ctx = canvas.getContext('2d');
-			ctx.fillStyle = '#ffffff';
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-			canvas.toBlob(async (blob) => {
-				const file = new File([blob], `promptpay-${cleanTarget}.png`, { type: 'image/png' });
-
-				if (navigator.canShare && navigator.canShare({ files: [file] })) {
+			if (navigator.canShare && navigator.canShare({ files: [file] })) {
+				try {
 					await navigator.share({
 						files: [file],
 						title: 'PromptPay QR',
 						text: `TH: รหัส QR PromptPay สำหรับหมายเลข ${cleanTarget}\nจำนวนเงิน ฿${amountPerPerson.toFixed(2)}\n\nEN: PromptPay QR for phone ${cleanTarget}\nAmount ฿${amountPerPerson.toFixed(2)}`
 					});
-				} else {
-					// fallback desktop: ดาวน์โหลด
-					const pngUrl = URL.createObjectURL(blob);
-					const a = document.createElement('a');
-					a.href = pngUrl;
-					a.download = `promptpay-${cleanTarget}.png`;
-					a.click();
-					URL.revokeObjectURL(pngUrl);
+				} catch (e) {
+					// AbortError = user cancelled, ignore. Other errors fall back to download.
+					if (e instanceof DOMException && e.name === 'AbortError') return;
+					triggerDownload(URL.createObjectURL(blob), `promptpay-${cleanTarget}.png`);
 				}
-			});
-
-			URL.revokeObjectURL(url);
-		};
-
-		img.src = url;
+			} else {
+				// Fallback desktop: download
+				triggerDownload(URL.createObjectURL(blob), `promptpay-${cleanTarget}.png`);
+			}
+		} catch {
+			// Invalid payload — nothing to share.
+		}
 	}
 </script>
 
@@ -168,8 +198,8 @@
 		content="แอปคนละครึ่งสำหรับคำนวณจำนวนเงินต่อคนและสร้าง PromptPay QR Code แบบง่ายๆ"
 	/>
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://workshop-svelte-half-and-half.vercel.app/" />
-	<meta property="og:image" content="/wallet.png" />
+	<meta property="og:url" content="{SITE_URL}/" />
+	<meta property="og:image" content="{SITE_URL}/wallet.png" />
 
 	<!-- Twitter Card -->
 	<meta name="twitter:card" content="summary_large_image" />
@@ -178,10 +208,7 @@
 		name="twitter:description"
 		content="คำนวณจำนวนเงินต่อคนและสร้าง PromptPay QR Code ดาวน์โหลด PNG/SVG"
 	/>
-	<meta name="twitter:image" content="/wallet.png" />
-
-	<!-- Favicon -->
-	<link rel="icon" href="/favicon.ico" type="image/x-icon" />
+	<meta name="twitter:image" content="{SITE_URL}/wallet.png" />
 
 	<!-- JSON-LD Structured Data -->
 	<script type="application/ld+json">
@@ -238,35 +265,39 @@
 					type="text"
 					inputmode="numeric"
 					pattern="[0-9]*"
-					bind:value={amount}
+					value={amountStr}
 					oninput={(e) => {
-						onlyNumber(e);
-						amount = Number(e.target.value || 0);
+						amountStr = e.currentTarget.value.replace(/\D/g, '');
 					}}
 					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline focus:outline-2 focus:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-800"
 					aria-label="Amount in Thai Baht"
 				/>
+				{#if !amountValid}
+					<p class="text-xs text-red-500">กรุณาใส่จำนวนเงินมากกว่า 0</p>
+				{/if}
 			</div>
 
 			<!-- People -->
 			<div class="space-y-2">
 				<label for="people" class="text-sm text-zinc-600 dark:text-zinc-300">
 					Number of People
+					<span class="text-xs text-zinc-600 dark:text-zinc-400">(จำนวนคน)</span>
 				</label>
-				<span class="text-xs text-zinc-600 dark:text-zinc-400">(จำนวนคน)</span>
 				<input
 					id="people"
 					type="text"
 					inputmode="numeric"
 					pattern="[0-9]*"
-					bind:value={person}
+					value={personStr}
 					oninput={(e) => {
-						onlyNumber(e);
-						person = Number(e.target.value || 0);
+						personStr = e.currentTarget.value.replace(/\D/g, '');
 					}}
 					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline focus:outline-2 focus:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-800"
 					aria-label="Number of people"
 				/>
+				{#if !personValid}
+					<p class="text-xs text-red-500">กรุณาใส่จำนวนคนตั้งแต่ 1 ขึ้นไป</p>
+				{/if}
 			</div>
 
 			<!-- Phone -->
@@ -274,7 +305,7 @@
 				<label for="phone" class="text-sm text-zinc-600 dark:text-zinc-300">PromptPay Phone</label>
 				<div class="flex justify-between text-xs">
 					<span id="phone-help" class="text-zinc-600 dark:text-zinc-400"
-						>(ใส่เบอร์โทรศัพท์ 10 หลัก)</span
+						>(ใส่เบอร์โทรศัพท์ 10 หลัก ขึ้นต้นด้วย 0)</span
 					>
 					<span class={cleanTarget.length === 10 ? 'text-green-500' : 'text-zinc-600'}>
 						{cleanTarget.length}/10
@@ -285,11 +316,10 @@
 					type="tel"
 					inputmode="numeric"
 					pattern="[0-9]*"
-					maxlength="10"
-					bind:value={target}
+					maxlength={10}
+					value={target}
 					oninput={(e) => {
-						onlyNumber(e);
-						target = e.target.value.slice(0, 10);
+						target = e.currentTarget.value.replace(/\D/g, '').slice(0, 10);
 					}}
 					placeholder="08xxxxxxxx"
 					class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline focus:outline-2 focus:outline-blue-500 dark:border-zinc-700 dark:bg-zinc-800"
@@ -297,7 +327,7 @@
 				/>
 			</div>
 
-			{#if isValidPhone}
+			{#if canShowQr && qrSvg}
 				<div
 					class="space-y-4 text-center"
 					in:scale={{ start: 0.95, duration: 200 }}
