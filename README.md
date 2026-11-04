@@ -1,8 +1,27 @@
-[English](README.md) | [ไทย](README.th.md)
+[EN](README.md) | [TH](README.th.md)
 
-# Half & Half | PromptPay
+<h1 align="center">Half &amp; Half | PromptPay</h1>
 
-A split-the-bill tool that calculates the amount owed per person and generates a PromptPay QR Code for the Thai payment system.
+<p align="center">
+  A split-the-bill tool that calculates the amount per person and generates a PromptPay QR Code.
+</p>
+
+<p align="center">
+  <a href="https://workshop-svelte-half-and-half.vercel.app"><strong>workshop-svelte-half-and-half.vercel.app</strong></a>
+</p>
+
+<p align="center">
+  <a href="#overview">Overview</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#tech-stack">Tech stack</a> ·
+  <a href="#project-structure">Structure</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#environment-variables">Environment</a> ·
+  <a href="#usage">Usage</a> ·
+  <a href="#notes">Notes</a>
+</p>
+
+---
 
 ## Overview
 
@@ -10,7 +29,7 @@ A split-the-bill tool that calculates the amount owed per person and generates a
 
 The QR payload is generated in the browser using [`promptparse`](https://www.npmjs.com/package/promptparse) (MSISDN / mobile-number PromptPay) and rendered as an SVG via [`uqr`](https://www.npmjs.com/package/uqr). No backend is involved: every calculation and QR generation happens locally in the browser, and inputs are remembered in `localStorage`.
 
-The interface is bilingual (English + Thai labels) and supports light and dark themes. The live site is deployed at `https://workshop-svelte-half-and-half.vercel.app`.
+The interface uses English and Thai labels and supports light and dark themes. The live site is deployed at `https://workshop-svelte-half-and-half.vercel.app`.
 
 ## Features
 
@@ -37,8 +56,8 @@ The interface is bilingual (English + Thai labels) and supports light and dark t
 | Icons | [`lucide-svelte`](https://www.npmjs.com/package/lucide-svelte) |
 | Analytics | [`@vercel/speed-insights`](https://www.npmjs.com/package/@vercel/speed-insights) |
 | Adapter | [`@sveltejs/adapter-auto`](https://svelte.dev/docs/kit/adapter-auto) |
-| Package manager | [pnpm](https://pnpm.io) |
-| Lint / format | ESLint 9 (flat config) + Prettier 3 (with Svelte & Tailwind plugins) |
+| Package manager | [pnpm](https://pnpm.io) (`pnpm-lock.yaml`) |
+| Lint / format | ESLint 9 (flat config) + Prettier 3 (with Svelte and Tailwind plugins) |
 | Type checking | `svelte-check` |
 
 ## Project structure
@@ -49,7 +68,7 @@ tool-promptpay-generator/
 │   ├── app.html              # HTML shell + inline theme script (prevents FOUC)
 │   ├── app.d.ts              # Global app type declarations
 │   ├── lib/
-│   │   ├── index.ts          # $lib barrel (currently empty placeholder)
+│   │   ├── index.ts          # $lib barrel (currently a placeholder)
 │   │   └── assets/
 │   │       ├── favicon.svg
 │   │       └── wallet.png
@@ -70,35 +89,31 @@ tool-promptpay-generator/
 
 ## Getting started
 
-### Prerequisites
+Requirements: **Node.js >=22.23.4** (`.nvmrc` pins 24.22.1) and **pnpm**. `.npmrc` sets `engine-strict=true`, so an unsupported Node version fails the install.
 
-- **Node.js** (LTS recommended).
-- **pnpm** — the repository ships a `pnpm-lock.yaml` and `pnpm-workspace.yaml`.
-
-### Installation
-
-```sh
+```bash
 pnpm install
+pnpm dev
 ```
 
-### Available scripts
+Open the URL printed by Vite. `pnpm build` produces a production build and `pnpm preview` serves it locally.
+
+### Scripts
 
 | Command | Description |
 | --- | --- |
-| `pnpm run dev` | Start the Vite dev server with hot reload. |
-| `pnpm run build` | Produce a production build. |
-| `pnpm run preview` | Preview the production build locally. |
-| `pnpm run check` | Run `svelte-kit sync` and `svelte-check` for type/compile errors. |
-| `pnpm run check:watch` | Same as `check`, in watch mode. |
-| `pnpm run lint` | Prettier check + ESLint across the project. |
-| `pnpm run format` | Format the codebase with Prettier. |
-| `pnpm run prepare` | `svelte-kit sync` (runs automatically on install). |
+| `pnpm run dev` | Start the Vite dev server with hot reload |
+| `pnpm run build` | Produce a production build |
+| `pnpm run preview` | Preview the production build locally |
+| `pnpm run check` | Run `svelte-kit sync` and `svelte-check` |
+| `pnpm run check:watch` | Same as `check`, in watch mode |
+| `pnpm run lint` | Prettier check + ESLint across the project |
+| `pnpm run format` | Format the codebase with Prettier |
+| `pnpm run prepare` | `svelte-kit sync` (runs automatically on install) |
 
-### Run locally
+## Environment variables
 
-```sh
-pnpm run dev
-```
+None. The project reads no `.env` values; behaviour is entirely client-side.
 
 ## Usage
 
@@ -110,12 +125,8 @@ pnpm run dev
 
 ## Notes
 
-- **No backend required.** All computation and QR generation run in the browser; there is no server-side logic or API.
-- **No environment variables.** The project does not read any `.env` values; behaviour is entirely client-side.
-- **Privacy.** Amount, number of people, and phone number are stored only in your browser's `localStorage` and are not sent to a server.
-- **Phone format.** Only 10-digit Thai mobile numbers beginning with `0` are accepted; the field strips non-digits and caps input at 10 characters.
-- **Deployment.** The project uses `@sveltejs/adapter-auto`, so it deploys to platforms such as Vercel without adapter changes. Speed Insights is wired in for Vercel.
-
-## License
-
-TODO: License not specified in this repository.
+- **No backend** — all computation and QR generation run in the browser; there is no server-side logic or API.
+- **Privacy** — amount, number of people, and phone number are stored only in your browser's `localStorage` and are not sent to a server.
+- **Phone format** — only 10-digit Thai mobile numbers beginning with `0` are accepted; the field strips non-digits and caps input at 10 characters.
+- **Deployment** — the project uses `@sveltejs/adapter-auto`, so it deploys to platforms such as Vercel without adapter changes. Speed Insights is wired in for Vercel.
+- **License** — MIT (see [LICENSE](LICENSE)).

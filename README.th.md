@@ -1,8 +1,27 @@
-[English](README.md) | [ไทย](README.th.md)
+[EN](README.md) | [TH](README.th.md)
 
-# Half & Half | PromptPay
+<h1 align="center">Half &amp; Half | PromptPay</h1>
 
-เครื่องมือหารบิลที่คำนวณยอดเงินต่อคนและสร้าง PromptPay QR Code สำหรับระบบชำระเงินของไทย
+<p align="center">
+  เครื่องมือหารบิลที่คำนวณยอดเงินต่อคนและสร้าง PromptPay QR Code
+</p>
+
+<p align="center">
+  <a href="https://workshop-svelte-half-and-half.vercel.app"><strong>workshop-svelte-half-and-half.vercel.app</strong></a>
+</p>
+
+<p align="center">
+  <a href="#ภาพรวม">ภาพรวม</a> ·
+  <a href="#ฟีเจอร์">ฟีเจอร์</a> ·
+  <a href="#เทคโนโลยีที่ใช้">เทคโนโลยี</a> ·
+  <a href="#โครงสร้างโปรเจกต์">โครงสร้าง</a> ·
+  <a href="#เริ่มต้นใช้งาน">เริ่มต้นใช้งาน</a> ·
+  <a href="#ตัวแปรสภาพแวดล้อม">ตัวแปรสภาพแวดล้อม</a> ·
+  <a href="#วิธีใช้งาน">วิธีใช้งาน</a> ·
+  <a href="#หมายเหตุ">หมายเหตุ</a>
+</p>
+
+---
 
 ## ภาพรวม
 
@@ -37,7 +56,7 @@
 | ไอคอน | [`lucide-svelte`](https://www.npmjs.com/package/lucide-svelte) |
 | วิเคราะห์การใช้งาน | [`@vercel/speed-insights`](https://www.npmjs.com/package/@vercel/speed-insights) |
 | Adapter | [`@sveltejs/adapter-auto`](https://svelte.dev/docs/kit/adapter-auto) |
-| ตัวจัดการแพ็กเกจ | [pnpm](https://pnpm.io) |
+| ตัวจัดการแพ็กเกจ | [pnpm](https://pnpm.io) (`pnpm-lock.yaml`) |
 | Lint / จัดรูปแบบ | ESLint 9 (flat config) + Prettier 3 (พร้อมปลั๊กอิน Svelte และ Tailwind) |
 | ตรวจชนิดข้อมูล | `svelte-check` |
 
@@ -49,7 +68,7 @@ tool-promptpay-generator/
 │   ├── app.html              # โครง HTML + inline script ตั้งค่าธีม (กัน FOUC)
 │   ├── app.d.ts              # ประกาศชนิดข้อมูลระดับแอป
 │   ├── lib/
-│   │   ├── index.ts          # barrel ของ $lib (ตอนนี้ยังเป็นไฟล์ว่าง)
+│   │   ├── index.ts          # barrel ของ $lib (ตอนนี้เป็นไฟล์ placeholder)
 │   │   └── assets/
 │   │       ├── favicon.svg
 │   │       └── wallet.png
@@ -70,35 +89,31 @@ tool-promptpay-generator/
 
 ## เริ่มต้นใช้งาน
 
-### สิ่งที่ต้องมีก่อน
+ความต้องการ: **Node.js >=22.23.4** (`.nvmrc` กำหนด 24.22.1) และ **pnpm** ไฟล์ `.npmrc` ตั้ง `engine-strict=true` ดังนั้นถ้าใช้ Node เวอร์ชันที่ไม่รองรับ การติดตั้งจะล้มเหลว
 
-- **Node.js** (แนะนำเวอร์ชัน LTS)
-- **pnpm** — โปรเจกต์มีไฟล์ `pnpm-lock.yaml` และ `pnpm-workspace.yaml` มาพร้อมแล้ว
-
-### ติดตั้ง
-
-```sh
+```bash
 pnpm install
+pnpm dev
 ```
 
-### คำสั่งที่มีให้ใช้
+เปิด URL ที่ Vite แสดง `pnpm build` จะสร้าง production build และ `pnpm preview` จะเสิร์ฟในเครื่อง
+
+### คำสั่งสคริปต์
 
 | คำสั่ง | คำอธิบาย |
 | --- | --- |
 | `pnpm run dev` | เปิด dev server ของ Vite พร้อม hot reload |
 | `pnpm run build` | สร้าง build สำหรับ production |
 | `pnpm run preview` | ดูตัวอย่าง production build ในเครื่อง |
-| `pnpm run check` | รัน `svelte-kit sync` และ `svelte-check` เพื่อตรวจชนิด/ข้อผิดพลาดตอนคอมไพล์ |
+| `pnpm run check` | รัน `svelte-kit sync` และ `svelte-check` |
 | `pnpm run check:watch` | เหมือน `check` แต่ทำงานแบบ watch |
 | `pnpm run lint` | ตรวจด้วย Prettier และ ESLint ทั่วโปรเจกต์ |
 | `pnpm run format` | จัดรูปแบบโค้ดทั้งโปรเจกต์ด้วย Prettier |
 | `pnpm run prepare` | `svelte-kit sync` (รันอัตโนมัติตอนติดตั้ง) |
 
-### รันในเครื่อง
+## ตัวแปรสภาพแวดล้อม
 
-```sh
-pnpm run dev
-```
+ไม่มี โปรเจกต์ไม่อ่านค่าจาก `.env` การทำงานทั้งหมดอยู่ฝั่งไคลเอนต์
 
 ## วิธีใช้งาน
 
@@ -111,11 +126,7 @@ pnpm run dev
 ## หมายเหตุ
 
 - **ไม่ต้องมี backend** การคำนวณและสร้าง QR ทำในเบราว์เซอร์ทั้งหมด ไม่มีลอจิกหรือ API ฝั่งเซิร์ฟเวอร์
-- **ไม่มี environment variable** โปรเจกต์ไม่อ่านค่าจาก `.env` การทำงานทั้งหมดอยู่ฝั่งไคลเอนต์
 - **ความเป็นส่วนตัว** ยอดเงิน จำนวนคน และเบอร์โทร ถูกเก็บไว้ใน `localStorage` ของเบราว์เซอร์เท่านั้น ไม่ถูกส่งไปเซิร์ฟเวอร์
 - **รูปแบบเบอร์โทร** รับเฉพาะมือถือไทย 10 หลักที่ขึ้นต้นด้วย `0` ช่องกรอกจะตัดอักขระที่ไม่ใช่ตัวเลขออกและจำกัดความยาวไม่เกิน 10 ตัวอักษร
 - **การ deploy** โปรเจกต์ใช้ `@sveltejs/adapter-auto` จึง deploy ขึ้นแพลตฟอร์มอย่าง Vercel ได้โดยไม่ต้องเปลี่ยน adapter และมีการต่อ Speed Insights สำหรับ Vercel ไว้แล้ว
-
-## สัญญาอนุญาต
-
-TODO: โปรเจกต์นี้ยังไม่ได้ระบุสัญญาอนุญาต (License)
+- **สัญญาอนุญาต** — MIT (ดู [LICENSE](LICENSE))
