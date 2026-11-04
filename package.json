@@ -1,6 +1,10 @@
 {
 	"name": "workshop-svelte-half-and-half",
 	"private": true,
+	"license": "MIT",
+	"engines": {
+		"node": ">=22.23.4"
+	},
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
